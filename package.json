@@ -4,6 +4,9 @@
   "description": "Dimmable control of LED lights connected to a Raspberry Pi via a MOSFET",
   "main": "index.js",
   "dependencies": {
+    "raspi": "^3.0.4",
+    "raspi-pwm": "^3.1.2",
+    "wiring-pi": "^2.2.1"
   },
   "devDependencies": {},
   "scripts": {
