@@ -25,6 +25,9 @@ function PWMLightAccessory(log, config) {
     // state vars
     this.on = 0;
     this.brightness = 100;
+    this.currentPWM = 0;
+    this.stepPWM = 64;
+    this.interval = undefined;
 
     // register the service and provide the functions
     this.service = new Service.Lightbulb(this.name);
@@ -42,12 +45,38 @@ function PWMLightAccessory(log, config) {
 }
 
 PWMLightAccessory.prototype.control = function(brightness, on) {
-    if(!on) {
-        brightness = 0;
+    var targetPWM = on && Math.round(brightness * 1024 / 100);
+
+    this.stepPWM = Math.abs(targetPWM - this.currentPWM) / (400 / 25);
+
+    if(!this.interval) {
+        this.interval = setInterval(this.tick.bind(this), 25);
     }
 
-    brightness = Math.round(brightness * 1024 / 100);
-    exec(`gpio -g pwm ${this.pin} ${brightness}`, (error, stdout, stderr) => {});
+    //exec(`gpio -g pwm ${this.pin} ${targetPWM}`, (error, stdout, stderr) => {});
+}
+
+PWMLightAccessory.prototype.tick = function() {
+    var targetPWM = this.on && Math.round(this.brightness * 1024 / 100);
+
+    if(this.currentPWM > targetPWM) {
+        this.currentPWM -= this.stepPWM;
+        if(this.currentPWM < targetPWM) {
+            this.currentPWM = targetPWM;
+        }
+    } else {
+        this.currentPWM += this.stepPWM;
+        if(this.currentPWM > targetPWM) {
+            this.currentPWM = targetPWM;
+        }
+    }
+
+    exec(`gpio -g pwm ${this.pin} ${this.currentPWM}`, (error, stdout, stderr) => {});
+
+    if(this.currentPWM == targetPWM) {
+        clearInterval(this.interval);
+        this.interval = undefined;
+    }
 }
 
 PWMLightAccessory.prototype.getOn = function(callback) {
